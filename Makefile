@@ -1,5 +1,5 @@
 IMAGE:= databus23/impfe
-VERSION := 0.1
+VERSION := 0.1.1
 
 build:
 	docker build -t $(IMAGE):$(VERSION) . 

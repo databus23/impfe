@@ -82,11 +82,11 @@ type ImpfzentrenCollector struct {
 
 func (c *ImpfzentrenCollector) Describe(ch chan<- *prometheus.Desc) {
 	if c.impfzentrumMetric == nil {
-		c.impfzentrumMetric = prometheus.NewDesc("impfzentrum",
+		c.impfzentrumMetric = prometheus.NewDesc("impfzentrum_info",
 			"Zeigt Impfzentren und Art der Impfung",
 			[]string{"name", "type", "disabled"}, nil,
 		)
-		c.nextSlotMetric = prometheus.NewDesc("impfzentrum_next_slot_duration_days",
+		c.nextSlotMetric = prometheus.NewDesc("impfzentrum_next_free_timestamp",
 			"Naechster verfuegbarer Termin",
 			[]string{"name", "type"}, nil,
 		)
@@ -134,7 +134,6 @@ func CollectAvailability(wg *sync.WaitGroup, ch chan<- prometheus.Metric, desc *
 		log.Printf("Failed to get availabilities for %s: %s", center.Name, err)
 		return
 	}
-	log.Printf("%#v", r)
 	var nextDate string
 	for _, a := range r.Availabilities {
 		if len(a.Slots) > 0 {
@@ -149,10 +148,11 @@ func CollectAvailability(wg *sync.WaitGroup, ch chan<- prometheus.Metric, desc *
 	if nextDate != "" {
 		nextSlot, err := time.Parse("2006-01-02", nextDate)
 		if err != nil {
-			log.Printf("Failed to get parse next slot %s: %s", nextDate, err)
+			log.Printf("Failed to parse next slot %s: %s", nextDate, err)
 			return
 		}
-		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, time.Until(nextSlot).Hours()/24, center.Name, motiveName)
+		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(nextSlot.Unix()), center.Name, motiveName)
+
 	}
 
 }
@@ -247,16 +247,4 @@ func Impfzentren() ([]Impfzentrum, error) {
 
 	return result, nil
 
-}
-
-func unique(slice []string) []string {
-	keys := make(map[string]bool)
-	list := []string{}
-	for _, entry := range slice {
-		if _, value := keys[entry]; !value {
-			keys[entry] = true
-			list = append(list, entry)
-		}
-	}
-	return list
 }
